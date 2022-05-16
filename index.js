@@ -77,6 +77,13 @@ async function run() {
             });
             res.send(services);
         });
+        // get appointment
+        app.get("/appointment", async (req, res) => {
+            const patientEmail = req.query.patientEmail;
+            const query = { patientEmail: patientEmail };
+            const result = await bookingCollection.find(query).toArray();
+            res.send(result);
+        });
     } finally {
     }
 }
