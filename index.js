@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const port = process.eventNames.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
@@ -22,10 +23,8 @@ async function run() {
         const serviceCollection = client
             .db("doctors-portal")
             .collection("services");
-        const bookingCollection = client
-            .db("doctors-portal")
-            .collection("bookings");
 
+        const userCollection = client.db("doctors-portal").collection("users");
         app.post("/booking", async (req, res) => {
             const booking = req.body;
             const query = {
@@ -49,6 +48,27 @@ async function run() {
                     " " +
                     booking.slot,
             });
+        });
+
+        // User create and update in database
+        app.put("/user/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+
+            const updateDoc = {
+                $set: user,
+            };
+            const result = await userCollection.updateOne(
+                filter,
+                updateDoc,
+                options
+            );
+            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN, {
+                expiresIn: "1h",
+            });
+            res.send({ result, token });
         });
 
         app.get("/services", async (req, res) => {
