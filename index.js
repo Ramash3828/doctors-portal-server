@@ -70,6 +70,35 @@ async function run() {
             });
         });
 
+        // Admin create and update in database
+        app.put("/user/admin/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const requseter = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({
+                email: requseter,
+            });
+            if (requesterAccount.role === "admin") {
+                const filter = { email: email };
+                const updateDoc = {
+                    $set: { role: "admin" },
+                };
+                const result = await userCollection.updateOne(
+                    filter,
+                    updateDoc
+                );
+                res.send(result);
+            } else {
+                res.status(403).send({ message: "Forbidden access" });
+            }
+        });
+        // Check Admin
+        app.get("/admin/:email", async (req, res) => {
+            const email = req.params.email;
+            const result = await userCollection.findOne({ email: email });
+            const isAdmin = result?.role === "admin";
+            res.send({ admin: isAdmin });
+        });
+
         // User create and update in database
         app.put("/user/:email", async (req, res) => {
             const email = req.params.email;
@@ -128,6 +157,12 @@ async function run() {
             } else {
                 res.status(403).send({ message: "Forbidden access" });
             }
+        });
+
+        // All users
+        app.get("/users", verifyToken, async (req, res) => {
+            const result = await userCollection.find({}).toArray();
+            res.send(result);
         });
     } finally {
     }
