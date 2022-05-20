@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+var nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const port = process.eventNames.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
@@ -9,6 +10,43 @@ require("dotenv").config();
 //MIddleware
 app.use(cors());
 app.use(express.json());
+//Send Email
+var transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: "kakon3311@gmail.com",
+        pass: process.env.EMAIL_PASS_KEY,
+    },
+});
+
+function sendBookingEmail(booking) {
+    const { patientName, treatmentName, patientEmail, slot, date } = booking;
+    const mailOptions = {
+        from: process.env.EMAIL_SENDER,
+        to: patientEmail,
+        subject: `Your Appointment for ${treatmentName} is on ${date} at ${slot} is confirmed`,
+        text: `Your Appointment for ${treatmentName} is on ${date} at ${slot} is confirmed`,
+        html: `
+        <div>
+        <p>Hello ${patientName}</p>
+        <h3>Your Appointment for <span className="text-primary">${treatmentName}</span> is Confirmed!</h3>
+        <p>Looking froward to seeing you on on <span>${date}</span> at <span>${slot}</span> </p>
+
+        <h3 className="font-bold">Our Address:</h3>
+        <p>420/042, KK ROAD</p>
+        <p>Dhaka, Bangladesh.</p>
+        </div>
+        `,
+    };
+    transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log("Email sent: " + info.response);
+        }
+    });
+}
+// end send email
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kmhef.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
@@ -44,6 +82,9 @@ async function run() {
             .db("doctors-portal")
             .collection("bookings");
         const userCollection = client.db("doctors-portal").collection("users");
+        const doctorCollection = client
+            .db("doctors-portal")
+            .collection("doctors");
 
         app.post("/booking", async (req, res) => {
             const booking = req.body;
@@ -60,6 +101,8 @@ async function run() {
                 });
             }
             const result = await bookingCollection.insertOne(booking);
+
+            sendBookingEmail(booking);
             res.send({
                 success: true,
                 message:
@@ -122,7 +165,7 @@ async function run() {
 
         app.get("/services", async (req, res) => {
             const query = {};
-            const cursor = serviceCollection.find(query);
+            const cursor = serviceCollection.find(query).project({ name: 1 });
             const services = await cursor.toArray();
             res.send(services);
         });
@@ -162,6 +205,13 @@ async function run() {
         // All users
         app.get("/users", verifyToken, async (req, res) => {
             const result = await userCollection.find({}).toArray();
+            res.send(result);
+        });
+
+        // Doctors
+        app.post("/doctor", async (req, res) => {
+            const doctor = req.body;
+            const result = await doctorCollection.insertOne(doctor);
             res.send(result);
         });
     } finally {
