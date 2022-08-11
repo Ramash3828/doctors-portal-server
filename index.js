@@ -238,7 +238,7 @@ async function run() {
     }
 }
 run().catch(console.dir);
-app.get("/", (_req, res) => {
+app.get("/", (req, res) => {
     res.send("Welcome to our Doctors Portal");
 });
 
