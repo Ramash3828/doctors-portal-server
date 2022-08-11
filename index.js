@@ -238,8 +238,8 @@ async function run() {
     }
 }
 run().catch(console.dir);
-app.get("/", (req, res) => {
-    res.send("Welcome to our Doctors Protal");
+app.get("/", (_req, res) => {
+    res.send("Welcome to our Doctors Portal");
 });
 
 app.listen(port, () => {
