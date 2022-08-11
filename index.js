@@ -86,6 +86,19 @@ async function run() {
             .db("doctors-portal")
             .collection("doctors");
 
+        // Admin verify
+        const verifyAdmin = async (req, res, next) => {
+            const requseter = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({
+                email: requseter,
+            });
+            if (requesterAccount.role === "admin") {
+                next();
+            } else {
+                res.status(403).send({ message: "Forbidden access" });
+            }
+        };
+
         app.post("/booking", async (req, res) => {
             const booking = req.body;
             const query = {
@@ -114,13 +127,12 @@ async function run() {
         });
 
         // Admin create and update in database
-        app.put("/user/admin/:email", verifyToken, async (req, res) => {
-            const email = req.params.email;
-            const requseter = req.decoded.email;
-            const requesterAccount = await userCollection.findOne({
-                email: requseter,
-            });
-            if (requesterAccount.role === "admin") {
+        app.put(
+            "/user/admin/:email",
+            verifyToken,
+            verifyAdmin,
+            async (req, res) => {
+                const email = req.params.email;
                 const filter = { email: email };
                 const updateDoc = {
                     $set: { role: "admin" },
@@ -130,10 +142,8 @@ async function run() {
                     updateDoc
                 );
                 res.send(result);
-            } else {
-                res.status(403).send({ message: "Forbidden access" });
             }
-        });
+        );
         // Check Admin
         app.get("/admin/:email", async (req, res) => {
             const email = req.params.email;
@@ -203,13 +213,23 @@ async function run() {
         });
 
         // All users
-        app.get("/users", verifyToken, async (req, res) => {
+        app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.find({}).toArray();
             res.send(result);
         });
+        // Manage Doctors
+        app.get(
+            "/manage-docrtors",
+            verifyToken,
+            verifyAdmin,
+            async (req, res) => {
+                const doctors = await doctorCollection.find().toArray({});
+                res.send(doctors);
+            }
+        );
 
-        // Doctors
-        app.post("/doctor", async (req, res) => {
+        // Doctors create
+        app.post("/doctor", verifyToken, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorCollection.insertOne(doctor);
             res.send(result);
